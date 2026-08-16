@@ -1,5 +1,10 @@
 from src.embeddings import create_embeddings
-from src.vector_store import create_vector_store, search_vector_store
+from src.vector_store import (
+    create_vector_store,
+    search_vector_store,
+    save_vector_store,
+    load_vector_store
+)
 
 
 chunks = [
@@ -9,35 +14,64 @@ chunks = [
 ]
 
 
-# Create embeddings
+print("===== CREATE EMBEDDINGS =====")
+
 embeddings = create_embeddings(chunks)
 
-print("===== VECTOR STORE TEST =====")
 print("Number of chunks:", len(chunks))
 print("Embedding shape:", embeddings.shape)
 
 
-# Create FAISS index
+print("\n===== CREATE VECTOR STORE =====")
+
 index = create_vector_store(embeddings)
 
 print("FAISS index created successfully")
 print("Number of vectors:", index.ntotal)
 
 
-# Test semantic search
+print("\n===== SAVE VECTOR STORE =====")
+
+save_vector_store(
+    index,
+    chunks,
+    directory="vectorstore"
+)
+
+print("Vector store saved successfully")
+
+
+print("\n===== LOAD VECTOR STORE =====")
+
+loaded_index, loaded_chunks = load_vector_store(
+    directory="vectorstore"
+)
+
+print("Vector store loaded successfully")
+print("Loaded vectors:", loaded_index.ntotal)
+print("Loaded chunks:", len(loaded_chunks))
+
+
+print("\n===== SEMANTIC SEARCH =====")
+
 query = "What programming and machine learning skills do I have?"
 
-query_embedding = create_embeddings([query])[0]
+query_embedding = create_embeddings(
+    [query]
+)[0]
 
-distances, indices = search_vector_store(
-    index,
+scores, indices = search_vector_store(
+    loaded_index,
     query_embedding,
-    top_k=2
+    top_k=5
 )
 
 
-print("\n===== SEARCH RESULTS =====")
+for score, index_number in zip(scores, indices):
 
-for distance, index_number in zip(distances, indices):
-    print("\nDistance:", distance)
-    print("Chunk:", chunks[index_number])
+    print("\nSimilarity score:", score)
+
+    print(
+        "Chunk:",
+        loaded_chunks[index_number]
+    )

@@ -6,31 +6,32 @@ def clean_text(text: str) -> str:
     Clean extracted resume text.
     """
 
+    if not text:
+        return ""
+
     # Replace multiple spaces/tabs with a single space
     text = re.sub(r"[ \t]+", " ", text)
 
     # Remove excessive blank lines
     text = re.sub(r"\n\s*\n+", "\n\n", text)
 
-    # Remove spaces at the beginning/end of lines
-    text = "\n".join(line.strip() for line in text.splitlines())
+    # Remove spaces at beginning/end of lines
+    text = "\n".join(
+        line.strip()
+        for line in text.splitlines()
+    )
 
     return text.strip()
 
 
 def chunk_text(
     text: str,
-    chunk_size: int = 1000,
+    chunk_size: int = 1500,
     chunk_overlap: int = 200
 ) -> list[str]:
     """
-    Split text into overlapping chunks.
-
-    chunk_size:
-        Maximum approximate number of characters per chunk.
-
-    chunk_overlap:
-        Number of characters shared between consecutive chunks.
+    Split resume text into overlapping chunks while
+    trying to preserve paragraph and section boundaries.
     """
 
     if not text:
@@ -41,20 +42,54 @@ def chunk_text(
             "chunk_overlap must be smaller than chunk_size."
         )
 
+    # Split using blank lines first
+    paragraphs = [
+        p.strip()
+        for p in text.split("\n\n")
+        if p.strip()
+    ]
+
     chunks = []
+    current_chunk = ""
 
-    start = 0
-    text_length = len(text)
+    for paragraph in paragraphs:
 
-    while start < text_length:
+        # If adding paragraph keeps us within the limit
+        if len(current_chunk) + len(paragraph) + 2 <= chunk_size:
 
-        end = start + chunk_size
+            if current_chunk:
+                current_chunk += "\n\n"
 
-        chunk = text[start:end].strip()
+            current_chunk += paragraph
 
-        if chunk:
-            chunks.append(chunk)
+        else:
 
-        start += chunk_size - chunk_overlap
+            if current_chunk:
+                chunks.append(current_chunk.strip())
+
+            # If paragraph itself is too large
+            if len(paragraph) > chunk_size:
+
+                start = 0
+
+                while start < len(paragraph):
+
+                    end = start + chunk_size
+
+                    piece = paragraph[start:end].strip()
+
+                    if piece:
+                        chunks.append(piece)
+
+                    start += chunk_size - chunk_overlap
+
+                current_chunk = ""
+
+            else:
+                current_chunk = paragraph
+
+    # Add remaining content
+    if current_chunk.strip():
+        chunks.append(current_chunk.strip())
 
     return chunks
