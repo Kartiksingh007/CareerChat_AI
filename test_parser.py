@@ -1,7 +1,7 @@
 from src.resume_parser import extract_resume_text
 
 
-file_path = r"C:\Users\asus\Downloads\Nikhil_CV.pdf"
+file_path = r"/Users/deeparani/Desktop/CareerChat-AI/uploads/Kartikey_CV.pdf"
 
 text = extract_resume_text(file_path)
 

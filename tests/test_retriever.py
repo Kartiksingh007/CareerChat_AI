@@ -6,7 +6,7 @@ from src.retriever import retrieve_relevant_chunks
 from src.vector_store import save_vector_store, load_vector_store
 
 # Resume path
-file_path = r"C:\Users\asus\Downloads\Nikhil_CV.pdf"
+file_path = r"/Users/deeparani/Desktop/CareerChat-AI/uploads/Kartikey_CV.pdf"
 
 
 # 1. Extract resume text

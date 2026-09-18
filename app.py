@@ -31,9 +31,12 @@ defaults = {
     "resume_name": None,
     "processed": False,
     "messages": [],
+    "pending_question": "",
+    "question_input": "",
 }
 
 for key, value in defaults.items():
+
     if key not in st.session_state:
         st.session_state[key] = value
 
@@ -129,16 +132,32 @@ st.html("""
         font-size: 12px;
         line-height: 1.6;
         margin-top: 15px;
+        margin-bottom: 10px;
     }
 
-    .suggestion {
+
+    /* ========================================================
+       SUGGESTION BUTTONS
+       ======================================================== */
+
+    section[data-testid="stSidebar"] .stButton > button {
+        width: 100%;
+        text-align: left;
         background: #f8f9fc;
         border: 1px solid #e7e9ef;
         border-radius: 10px;
-        padding: 11px 12px;
-        margin-top: 8px;
+        padding: 10px 12px;
+        margin-top: 7px;
         font-size: 12px;
         color: #374151;
+        font-weight: 600;
+        min-height: 42px;
+    }
+
+    section[data-testid="stSidebar"] .stButton > button:hover {
+        border-color: #6366f1;
+        color: #6366f1;
+        background: #f5f5ff;
     }
 
 
@@ -279,8 +298,6 @@ st.html("""
         margin-bottom: 14px;
     }
 
-    /* Make all chat text visible */
-
     [data-testid="stChatMessage"] p,
     [data-testid="stChatMessage"] li,
     [data-testid="stChatMessage"] ul,
@@ -289,8 +306,6 @@ st.html("""
     [data-testid="stChatMessage"] div {
         color: #1f2937 !important;
     }
-
-    /* Markdown */
 
     [data-testid="stChatMessage"] .stMarkdown {
         color: #1f2937 !important;
@@ -360,11 +375,32 @@ st.html("""
 
 
     /* ========================================================
-       INPUT
+       TEXT INPUT
     ======================================================== */
 
-    [data-testid="stChatInput"] {
+    div[data-testid="stTextInput"] input {
         border-radius: 14px;
+        border: 1px solid #dfe3eb;
+        background: #ffffff;
+        color: #1f2937;
+        padding: 12px 15px;
+    }
+
+    div[data-testid="stTextInput"] input:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 1px #6366f1;
+    }
+
+
+    /* ========================================================
+       SEND BUTTON
+    ======================================================== */
+
+    .send-button .stButton > button {
+        min-height: 42px;
+        border-radius: 12px;
+        font-size: 18px;
+        font-weight: 700;
     }
 
 
@@ -414,6 +450,10 @@ st.html("""
 
 with st.sidebar:
 
+    # --------------------------------------------------------
+    # BRAND
+    # --------------------------------------------------------
+
     st.html("""
     <div class="brand">
 
@@ -441,6 +481,10 @@ with st.sidebar:
     """)
 
 
+    # --------------------------------------------------------
+    # RESUME
+    # --------------------------------------------------------
+
     st.html("""
     <div class="sidebar-heading">
         📄 Resume
@@ -460,6 +504,10 @@ with st.sidebar:
     st.caption("Supported formats: PDF, DOCX")
 
 
+    # --------------------------------------------------------
+    # SUGGESTED QUESTIONS
+    # --------------------------------------------------------
+
     st.html("""
     <div style="height:25px;"></div>
 
@@ -470,23 +518,35 @@ with st.sidebar:
     <div class="sidebar-help">
         Questions you can ask about your resume:
     </div>
-
-    <div class="suggestion">
-        What skills does the candidate have?
-    </div>
-
-    <div class="suggestion">
-        What is the current job title?
-    </div>
-
-    <div class="suggestion">
-        What companies has the candidate worked for?
-    </div>
-
-    <div class="suggestion">
-        What machine learning algorithms are mentioned?
-    </div>
     """)
+
+
+    suggestion_questions = [
+
+        "What skills does the candidate have?",
+
+        "What is the current job title?",
+
+        "What companies has the candidate worked for?",
+
+        "What machine learning algorithms are mentioned?",
+
+    ]
+
+
+    for i, suggestion in enumerate(suggestion_questions):
+
+        if st.button(
+            suggestion,
+            key=f"suggestion_{i}",
+            use_container_width=True,
+        ):
+
+            # Store clicked question
+            st.session_state.pending_question = suggestion
+
+            # Rerun page
+            st.rerun()
 
 
 # ============================================================
@@ -525,9 +585,16 @@ if uploaded_file is not None:
 
     file_path = upload_dir / uploaded_file.name
 
-    # Save uploaded file
+
+    # --------------------------------------------------------
+    # SAVE UPLOADED FILE
+    # --------------------------------------------------------
+
     with open(file_path, "wb") as file:
-        file.write(uploaded_file.getbuffer())
+
+        file.write(
+            uploaded_file.getbuffer()
+        )
 
 
     # ========================================================
@@ -543,15 +610,18 @@ if uploaded_file is not None:
 
         try:
 
-            with st.spinner("Analyzing your resume..."):
+            with st.spinner(
+                "Analyzing your resume..."
+            ):
 
                 # --------------------------------------------
-                # 1. Extract resume text
+                # 1. EXTRACT RESUME TEXT
                 # --------------------------------------------
 
                 resume_text = extract_resume_text(
                     str(file_path)
                 )
+
 
                 if not resume_text or not resume_text.strip():
 
@@ -561,12 +631,13 @@ if uploaded_file is not None:
 
 
                 # --------------------------------------------
-                # 2. Clean text
+                # 2. CLEAN TEXT
                 # --------------------------------------------
 
                 cleaned_text = clean_text(
                     resume_text
                 )
+
 
                 if not cleaned_text.strip():
 
@@ -576,12 +647,13 @@ if uploaded_file is not None:
 
 
                 # --------------------------------------------
-                # 3. Create chunks
+                # 3. CREATE CHUNKS
                 # --------------------------------------------
 
                 chunks = chunk_text(
                     cleaned_text
                 )
+
 
                 if not chunks:
 
@@ -591,12 +663,13 @@ if uploaded_file is not None:
 
 
                 # --------------------------------------------
-                # 4. Create embeddings
+                # 4. CREATE EMBEDDINGS
                 # --------------------------------------------
 
                 embeddings = create_embeddings(
                     chunks
                 )
+
 
                 if embeddings is None:
 
@@ -606,12 +679,13 @@ if uploaded_file is not None:
 
 
                 # --------------------------------------------
-                # 5. Create FAISS vector store
+                # 5. CREATE FAISS VECTOR STORE
                 # --------------------------------------------
 
                 index = create_vector_store(
                     embeddings
                 )
+
 
                 if index is None:
 
@@ -621,12 +695,17 @@ if uploaded_file is not None:
 
 
                 # --------------------------------------------
-                # 6. Save everything in session state
+                # 6. SAVE IN SESSION STATE
                 # --------------------------------------------
 
                 st.session_state.index = index
+
                 st.session_state.chunks = chunks
-                st.session_state.resume_name = uploaded_file.name
+
+                st.session_state.resume_name = (
+                    uploaded_file.name
+                )
+
                 st.session_state.processed = True
 
 
@@ -658,6 +737,10 @@ if uploaded_file is not None:
 
 if st.session_state.processed:
 
+    # --------------------------------------------------------
+    # CHAT HEADER
+    # --------------------------------------------------------
+
     st.html("""
     <div class="chat-container">
 
@@ -683,158 +766,229 @@ if st.session_state.processed:
             message["role"]
         ):
 
-            # Use markdown so AI formatting works
             st.markdown(
                 message["content"]
             )
 
 
     # ========================================================
+    # PUT SIDEBAR QUESTION INTO INPUT
+    # ========================================================
+
+    if st.session_state.pending_question:
+
+        st.session_state.question_input = (
+            st.session_state.pending_question
+        )
+
+        st.session_state.pending_question = ""
+
+
+    # ========================================================
     # CHAT INPUT
     # ========================================================
 
-    question = st.chat_input(
-        "Ask something about your resume..."
-    )
+    with st.form(
+        "chat_form",
+        clear_on_submit=True,
+    ):
+
+        col1, col2 = st.columns(
+            [8, 1]
+        )
+
+
+        # ----------------------------------------------------
+        # TEXT INPUT
+        # ----------------------------------------------------
+
+        with col1:
+
+            question = st.text_input(
+                "Ask something about your resume...",
+                key="question_input",
+                label_visibility="collapsed",
+                placeholder="Ask something about your resume...",
+            )
+
+
+        # ----------------------------------------------------
+        # SEND BUTTON
+        # ----------------------------------------------------
+
+        with col2:
+
+            st.markdown(
+                '<div class="send-button">',
+                unsafe_allow_html=True,
+            )
+
+            send_clicked = st.form_submit_button(
+                "↑",
+                use_container_width=True,
+            )
+
+            st.markdown(
+                "</div>",
+                unsafe_allow_html=True,
+            )
 
 
     # ========================================================
     # PROCESS QUESTION
     # ========================================================
 
-    if question:
+    if send_clicked and question:
 
-        # ----------------------------------------------------
-        # SAVE USER QUESTION
-        # ----------------------------------------------------
-
-        st.session_state.messages.append(
-            {
-                "role": "user",
-                "content": question,
-            }
-        )
+        question = question.strip()
 
 
-        # ----------------------------------------------------
-        # DISPLAY USER QUESTION
-        # ----------------------------------------------------
+        if question:
 
-        with st.chat_message("user"):
+            # ------------------------------------------------
+            # SAVE USER QUESTION
+            # ------------------------------------------------
 
-            st.markdown(question)
-
-
-        # ----------------------------------------------------
-        # GENERATE AI ANSWER
-        # ----------------------------------------------------
-
-        with st.chat_message("assistant"):
-
-            with st.spinner(
-                "Searching your resume..."
-            ):
-
-                try:
-
-                    # ========================================
-                    # 1. RETRIEVE RELEVANT CHUNKS
-                    # ========================================
-
-                    results = retrieve_relevant_chunks(
-                        index=st.session_state.index,
-                        chunks=st.session_state.chunks,
-                        query=question,
-                        top_k=3,
-                    )
+            st.session_state.messages.append(
+                {
+                    "role": "user",
+                    "content": question,
+                }
+            )
 
 
-                    # ========================================
-                    # 2. NO RESULTS
-                    # ========================================
+            # ------------------------------------------------
+            # DISPLAY USER QUESTION
+            # ------------------------------------------------
 
-                    if not results:
+            with st.chat_message("user"):
 
-                        answer = (
-                            "I could not find that information "
-                            "in the resume."
+                st.markdown(
+                    question
+                )
+
+
+            # ------------------------------------------------
+            # GENERATE AI ANSWER
+            # ------------------------------------------------
+
+            with st.chat_message("assistant"):
+
+                with st.spinner(
+                    "Searching your resume..."
+                ):
+
+                    try:
+
+                        # ====================================
+                        # 1. RETRIEVE RELEVANT CHUNKS
+                        # ====================================
+
+                        results = retrieve_relevant_chunks(
+
+                            index=st.session_state.index,
+
+                            chunks=st.session_state.chunks,
+
+                            query=question,
+
+                            top_k=3,
                         )
 
 
-                    # ========================================
-                    # 3. RESULTS FOUND
-                    # ========================================
+                        # ====================================
+                        # 2. NO RESULTS
+                        # ====================================
 
-                    else:
+                        if not results:
 
-                        context_parts = []
-
-                        for result in results:
-
-                            chunk = result.get(
-                                "chunk",
-                                ""
+                            answer = (
+                                "I could not find that information "
+                                "in the resume."
                             )
 
-                            if chunk:
 
-                                context_parts.append(
-                                    chunk
+                        # ====================================
+                        # 3. RESULTS FOUND
+                        # ====================================
+
+                        else:
+
+                            context_parts = []
+
+
+                            for result in results:
+
+                                chunk = result.get(
+                                    "chunk",
+                                    "",
                                 )
 
 
-                        context = "\n\n".join(
-                            context_parts
-                        )
+                                if chunk:
+
+                                    context_parts.append(
+                                        chunk
+                                    )
 
 
-                        # ====================================
-                        # 4. GENERATE LLM RESPONSE
-                        # ====================================
-
-                        answer = generate_answer(
-                            context,
-                            question,
-                        )
-
-
-                        # Safety check
-                        if answer is None:
-
-                            answer = (
-                                "I could not generate an answer."
+                            context = "\n\n".join(
+                                context_parts
                             )
 
 
-                        answer = str(
-                            answer
-                        ).strip()
+                            # =================================
+                            # 4. GENERATE LLM RESPONSE
+                            # =================================
+
+                            answer = generate_answer(
+                                context,
+                                question,
+                            )
 
 
-                except Exception as e:
+                            # =================================
+                            # 5. SAFETY CHECK
+                            # =================================
 
-                    answer = (
-                        f"Error generating answer: {str(e)}"
-                    )
+                            if answer is None:
 
-
-            # =================================================
-            # DISPLAY ANSWER
-            # =================================================
-
-            st.markdown(answer)
+                                answer = (
+                                    "I could not generate an answer."
+                                )
 
 
-        # ====================================================
-        # SAVE ASSISTANT RESPONSE
-        # ====================================================
+                            answer = str(
+                                answer
+                            ).strip()
 
-        st.session_state.messages.append(
-            {
-                "role": "assistant",
-                "content": answer,
-            }
-        )
+
+                    except Exception as e:
+
+                        answer = (
+                            f"Error generating answer: {str(e)}"
+                        )
+
+
+                # ------------------------------------------------
+                # DISPLAY ANSWER
+                # ------------------------------------------------
+
+                st.markdown(
+                    answer
+                )
+
+
+            # ------------------------------------------------
+            # SAVE ASSISTANT RESPONSE
+            # ------------------------------------------------
+
+            st.session_state.messages.append(
+                {
+                    "role": "assistant",
+                    "content": answer,
+                }
+            )
 
 
 # ============================================================
